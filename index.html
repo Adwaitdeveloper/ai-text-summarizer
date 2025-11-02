@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Text Summarizer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Simple animation for the loader */
+        .loader {
+            border: 4px solid #f3f3f3; /* Light grey */
+            border-top: 4px solid #3498db; /* Blue */
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
+
+    <main class="bg-white w-full max-w-4xl rounded-2xl shadow-lg p-6 md:p-10 transition-all duration-300">
+        <!-- Header Section -->
+        <header class="text-center mb-8">
+            <div class="inline-block bg-blue-100 text-blue-600 p-3 rounded-full mb-4">
+                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-file-text"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+            </div>
+            <h1 class="text-4xl font-bold text-gray-800">AI Text Summarizer</h1>
+            <p class="text-gray-500 mt-2 text-lg">Condense long articles and texts into clear, concise summaries instantly.</p>
+        </header>
+
+        <!-- Main Content Area -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            
+            <!-- Input Section -->
+            <div class="flex flex-col">
+                <label for="text-input" class="text-lg font-semibold text-gray-700 mb-2">Your Text</label>
+                <div class="relative flex-grow">
+                    <textarea id="text-input" 
+                              class="w-full h-full min-h-[300px] p-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-200 resize-none"
+                              placeholder="Paste your text here..."></textarea>
+                </div>
+                <div id="stats" class="text-sm text-gray-500 mt-2 text-right">0 words, 0 characters</div>
+                <button id="summarize-btn" class="mt-4 w-full bg-blue-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-blue-700 active:scale-95 transition-transform duration-200 flex items-center justify-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-zap"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+                    <span>Summarize</span>
+                </button>
+            </div>
+
+            <!-- Output Section -->
+            <div class="flex flex-col">
+                <label for="summary-output" class="text-lg font-semibold text-gray-700 mb-2">Summary</label>
+                <div id="summary-container" class="relative flex-grow bg-gray-50 p-4 border border-gray-200 rounded-xl min-h-[300px] flex items-center justify-center">
+                    <!-- Loader -->
+                    <div id="loader" class="loader hidden"></div>
+                    <!-- Placeholder -->
+                    <p id="summary-placeholder" class="text-gray-400 text-center">Your generated summary will appear here.</p>
+                    <!-- Output -->
+                    <div id="summary-output" class="text-gray-700 leading-relaxed"></div>
+                    <!-- Copy Button -->
+                    <button id="copy-btn" class="absolute top-3 right-3 bg-gray-200 text-gray-600 p-2 rounded-lg hover:bg-gray-300 transition-colors hidden">
+                       <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-copy"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                    </button>
+                </div>
+                 <button id="clear-btn" class="mt-4 w-full bg-gray-200 text-gray-700 font-bold py-3 px-6 rounded-lg hover:bg-gray-300 active:scale-95 transition-transform duration-200">
+                    Clear
+                </button>
+            </div>
+        </div>
+
+    </main>
+    
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            const textInput = document.getElementById("text-input");
+            const summarizeBtn = document.getElementById("summarize-btn");
+            const summaryOutput = document.getElementById("summary-output");
+            const summaryPlaceholder = document.getElementById("summary-placeholder");
+            const loader = document.getElementById("loader");
+            const copyBtn = document.getElementById("copy-btn");
+            const clearBtn = document.getElementById("clear-btn");
+            const stats = document.getElementById("stats");
+            const summarizeBtnText = summarizeBtn.querySelector('span');
+
+            // Update word and character count
+            textInput.addEventListener('input', () => {
+                const text = textInput.value;
+                const words = text.trim().split(/\s+/).filter(Boolean).length;
+                const chars = text.length;
+                stats.textContent = `${words} words, ${chars} characters`;
+            });
+
+            // Summarize button click handler
+            summarizeBtn.addEventListener("click", () => {
+                const text = textInput.value.trim();
+                
+                if (!text) {
+                    alert("Please enter some text to summarize.");
+                    return;
+                }
+
+                // --- Start Loading State ---
+                summarizeBtn.disabled = true;
+                summarizeBtnText.textContent = 'Summarizing...';
+                summaryPlaceholder.classList.add('hidden');
+                summaryOutput.textContent = '';
+                copyBtn.classList.add('hidden');
+                loader.classList.remove('hidden');
+
+                // --- API Call ---
+                fetch("http://127.0.0.1:8000/summarize", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ text: text }),
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    summaryOutput.innerText = data.summary;
+                    copyBtn.classList.remove('hidden');
+                })
+                .catch(error => {
+                    console.error("Error:", error);
+                    summaryOutput.innerText = "An error occurred. Please check the console or ensure the backend server is running.";
+                })
+                .finally(() => {
+                    // --- End Loading State ---
+                    summarizeBtn.disabled = false;
+                    summarizeBtnText.textContent = 'Summarize';
+                    loader.classList.add('hidden');
+                    // Show placeholder again if output is empty
+                    if (!summaryOutput.innerText) {
+                        summaryPlaceholder.classList.remove('hidden');
+                    }
+                });
+            });
+
+            // Copy button click handler
+            copyBtn.addEventListener('click', () => {
+                navigator.clipboard.writeText(summaryOutput.innerText)
+                    .then(() => {
+                        const originalText = copyBtn.innerHTML;
+                        copyBtn.innerHTML = `
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-green-500"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        `;
+                        setTimeout(() => {
+                           copyBtn.innerHTML = originalText;
+                        }, 1500);
+                    })
+                    .catch(err => {
+                        console.error('Failed to copy text: ', err);
+                    });
+            });
+
+            // Clear button click handler
+            clearBtn.addEventListener('click', () => {
+                textInput.value = '';
+                summaryOutput.textContent = '';
+                copyBtn.classList.add('hidden');
+                summaryPlaceholder.classList.remove('hidden');
+                stats.textContent = '0 words, 0 characters';
+                textInput.focus();
+            });
+
+        });
+    </script>
+</body>
+</html>
